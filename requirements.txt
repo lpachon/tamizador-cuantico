@@ -1,0 +1,13 @@
+# Obligatorio
+numpy>=1.24
+
+# Recomendado: mejor muestreo (Sobol) y refinamiento clásico (COBYLA).
+# Sin scipy el tamizador funciona igual, con muestreo aleatorio uniforme.
+scipy>=1.11
+
+# Solo para demo_interferencia.py
+qiskit>=2.0
+
+# Solo para inventario_cripto.py
+cryptography>=42.0
+certifi>=2024.0

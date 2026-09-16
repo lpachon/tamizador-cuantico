@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    name: pruebas · Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install numpy scipy cryptography certifi pytest
+      - name: Regresión de la auditoría y ejemplos
+        run: pytest tests -q
+
+  sin-scipy:
+    # El README afirma que la herramienta funciona solo con numpy.
+    # Esto lo comprueba en vez de dejarlo como promesa.
+    name: sin scipy (solo numpy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install numpy pytest
+      - name: Los cuatro ejemplos corren igual
+        run: python tamizador.py
+      - name: Las pruebas pasan, saltando lo que necesita scipy
+        run: pytest tests -q
+
+  demostracion:
+    # demo_interferencia.py es material de taller: si se rompe, alguien se
+    # queda sin poder correrlo en la sala.
+    name: demostración de interferencia
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install qiskit
+      - name: Dos compuertas H deben dar 100 / 0
+        run: |
+          python demo_interferencia.py | tee salida.txt
+          grep -q "0: 100.00 %" salida.txt
