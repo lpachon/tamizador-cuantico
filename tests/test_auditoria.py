@@ -114,3 +114,18 @@ def test_c5_el_ejemplo_de_ascenso_es_dimensionalmente_plausible():
     assert len(vf) > 0, "el ejemplo debe tener alguna solución factible"
     # El costo es una masa en kg: un A320 ronda las 58-60 toneladas.
     assert -61_000 < float(np.median(vf)) < -55_000, float(np.median(vf))
+
+
+def test_c11_la_medida_1_declara_que_es_de_compuertas():
+    """C11: el título prometía «el hardware de hoy» y solo mide el de compuertas.
+
+    Con 5.760 qubits físicos en un D-Wave Pegasus, un umbral de 30 qubits sin
+    calificar invita a la objeción obvia. El alcance tiene que estar en el
+    título, no solo en un comentario del código.
+    """
+    from tamizador import ejemplo_mezcla_de_produccion
+
+    v = tamizar(ejemplo_mezcla_de_produccion())
+    m1 = v.medidas[0]
+    assert "compuertas" in m1.pregunta, f"la medida 1 no declara su alcance: {m1.pregunta!r}"
+    assert "annealing" in m1.comentario, "el comentario no remite al caso del annealing"

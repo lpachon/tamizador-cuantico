@@ -116,6 +116,65 @@ encontrarla si, una vez dentro, todas las soluciones valen lo mismo.
 
 ---
 
+## ¿Y el quantum annealing?
+
+Es la objeción más razonable que le pueden hacer a esta herramienta, y conviene
+tenerla contestada.
+
+**Quantum annealing** (literalmente «templado cuántico», por el temple de los
+metales) es **otra máquina distinta**, no una variante de la de compuertas. No
+ejecuta un circuito. Se le entrega el paisaje de costos del problema —el mismo
+QUBO de la sección anterior— y se la deja evolucionar despacio hasta que el
+sistema se asienta en el punto más bajo que encuentra. El fabricante principal
+es D-Wave. Y a diferencia de las máquinas de compuertas, **está construida
+específicamente para esto**.
+
+Entonces, ¿por qué la medida 1 corta en 30 qubits si D-Wave tiene miles?
+
+Porque en esa máquina el cuello de botella no es el número de qubits:
+
+| | Compuertas | Quantum annealing |
+|---|---|---|
+| Qubits físicos | decenas a ~1.000 | 5.760 (Pegasus) |
+| Conexiones por qubit | 2–3 (heavy-hex) | 15 |
+| Variables **densas** que caben | ~30 | ~150 |
+| El muro real | profundidad y ruido | *embedding* y precisión analógica |
+
+Los 5.760 qubits no son 5.760 variables. Como cada qubit solo toca a 15 vecinos
+y un QUBO denso necesita que **toda** variable hable con todas, hay que hacer un
+*minor embedding*: cada variable lógica se representa con una **cadena** de
+qubits físicos encadenados. En Pegasus al 100 % de rendimiento, el grafo completo
+más grande que se puede incrustar es K₁₅₀ con cadenas de 14 qubits — unas 38
+veces más qubits físicos que variables. Y si una cadena se rompe durante la
+evolución, esa variable queda sin valor definido y hay que resolverla por
+mayoría, que es una forma elegante de decir «adivinar».
+
+El segundo muro es analógico. Los acopladores tienen rango dinámico y error de
+control finitos. En cuanto usted añade penalizaciones para forzar restricciones
+—y casi todo problema real tiene restricciones— los coeficientes del QUBO
+abarcan varios órdenes de magnitud, y los pequeños se hunden por debajo del
+error de control de la máquina. El problema que se resuelve deja de ser el suyo.
+
+**¿Cambia el veredicto?** No, pero cambia la razón. El estudio revisado por pares
+que comparó el resolvedor híbrido de D-Wave contra CPLEX, Gurobi e IPOPT concluye
+que las implementaciones actuales están *«limited in size and not yet upscaled to
+real-world situations»*, con su nicho en objetivos cuadráticos enteros. Y un
+análisis de contabilidad de tiempos de octubre de 2025 revisó una afirmación de
+ventaja en QUBO sobre annealing y encontró que medía el **tiempo de annealing**
+en lugar del tiempo de ejecución real: el reloj arrancaba después de programar
+el chip.
+
+Un matiz importante, por honestidad: D-Wave **sí** publicó en 2025 un resultado
+más allá de lo clásico en *Science* — pero en **simulación de dinámica de vidrios
+de espín**, no en optimización. Eso es el nivel 1 de la tabla de la sección
+siguiente, la excepción sólida: la máquina no simula el sistema, lo encarna. Y
+sigue en disputa activa, porque Tindall *et al.* replicaron buena parte del
+resultado clásicamente con redes tensoriales.
+
+> Si un proveedor le ofrece annealing para rutas, turnos o carga, la pregunta
+> que zanja es la misma de siempre: *¿me enseña la línea base clásica batida,
+> con el tiempo total contado y en hardware real?*
+
 ## Dónde sí hay caso
 
 Un filtro que solo descarta deja una pregunta abierta: ¿dónde gana la cuántica,
@@ -326,6 +385,9 @@ Para ver si su navegador ya usa claves post-cuánticas, sin instalar nada, abra
   siguiente paso y es trabajo de modelado.
 - **No cubre criptografía post-cuántica.** Ese es el otro reloj, y corre por su
   cuenta: allí la tarea es un inventario criptográfico, no un tamizado.
+- **Solo tamiza hardware de compuertas.** Los cinco umbrales suponen un
+  circuito QAOA sobre conectividad heavy-hex. En quantum annealing los
+  límites son otros — véase [¿Y el quantum annealing?](#y-el-quantum-annealing).
 - **«NO DESCARTADO» no es una promesa.** El filtro impone condiciones
   **necesarias**, no suficientes: elimina, no selecciona. Superarlo significa que
   el problema no falla por las razones que el filtro sabe medir — no que la

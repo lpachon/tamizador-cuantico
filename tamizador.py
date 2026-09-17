@@ -151,12 +151,15 @@ def _m1_cabe(p: Problema) -> Medida:
     # una vez transpilado a conectividad heavy-hex.
     prof = 2 * (3 * q + 8)
     return Medida(
-        "¿Cabe en el hardware de hoy?",
+        "¿Cabe en el hardware de compuertas de hoy?",
         f"{q} qubits · profundidad ≈ {prof}",
         f"≤ {QUBITS_MAX} qubits",
         q <= QUBITS_MAX,
         f"{p.n_variables} variables × {p.bits_por_variable} bits. "
-        f"Bajar un bit por variable ahorra {p.n_variables} qubits y pierde resolución.",
+        f"Bajar un bit por variable ahorra {p.n_variables} qubits y pierde resolución. "
+        f"El umbral es de compuertas: en quantum annealing el muro no es el "
+        f"número de qubits sino el embedding y la precisión analógica "
+        f"(véase «¿Y el quantum annealing?» en el README).",
     )
 
 

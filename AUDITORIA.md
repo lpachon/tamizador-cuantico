@@ -76,6 +76,27 @@ es la forma recomendada de declarar la incertidumbre. Si solo se da la relativa
 y la mediana no domina a la dispersión, la medida se declara **no concluyente**
 en vez de inventarse una cifra.
 
+## C11 — La medida 1 prometía más alcance del que medía
+
+**Severidad:** de comunicación, no de cálculo.
+
+El título de la medida 1 era «¿Cabe en el hardware de hoy?», pero su propio
+comentario interno declara que modela «QAOA p=2 sobre topología heavy-hex»: es
+decir, hardware **de compuertas**. Un asistente que conozca D-Wave —5.760 qubits
+físicos— tenía derecho a preguntar por qué la herramienta corta en 30, y el texto
+no se lo contestaba en ningún sitio.
+
+El veredicto no cambia: el estudio revisado por pares que compara el resolvedor
+híbrido de D-Wave contra CPLEX, Gurobi e IPOPT concluye que las implementaciones
+actuales están «limited in size and not yet upscaled to real-world situations».
+Lo que cambia es la **razón**, y esa razón faltaba.
+
+**Arreglo:** el título ahora dice «¿Cabe en el hardware **de compuertas** de
+hoy?», el detalle remite a la sección nueva del README, y esa sección explica el
+muro real del annealing: el *minor embedding* (en Pegasus, K₁₅₀ con cadenas de 14
+qubits — 38 veces más qubits físicos que variables) y el rango dinámico finito de
+los acopladores.
+
 ## Lo que se comprobó y resistió
 
 - La explicación de LABS es correcta: sobre espines puros da ρ = 0,027 y un
