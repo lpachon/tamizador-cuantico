@@ -80,9 +80,9 @@ Cada pregunta es un número con un umbral. Nada aquí es opinión.
 
 | # | Pregunta | Qué se mide | Umbral de descarte |
 |---|---|---|---|
-| 1 | ¿Cabe en el hardware de hoy? | Qubits = variables × bits, y profundidad del circuito | más de 30 qubits |
+| 1 | ¿Cabe en el hardware **de compuertas** de hoy? | Qubits = variables × bits, y profundidad del circuito | más de 30 qubits |
 | 2 | ¿Sobrevive la traducción a QUBO? | ρ de Spearman de una cuadrática **sobre los bits** | ρ < 0,90 |
-| 3 | ¿Las soluciones válidas son raras? | Rendimiento de factibilidad sobre muestreo Sobol | menos del 0,1 % |
+| 3 | ¿Las soluciones válidas son raras? | Rendimiento de factibilidad sobre el muestreo (Sobol con scipy, uniforme sin él) | menos del 0,1 % |
 | 4 | ¿El costo es plano? | Dispersión del objetivo **en sus propias unidades** | menos de 3× el ruido de su modelo |
 | 5 | Línea base clásica | Mejor valor alcanzado en el mismo tiempo de cómputo | *informativa* |
 

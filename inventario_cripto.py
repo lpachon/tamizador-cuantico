@@ -28,6 +28,7 @@ import ssl
 import subprocess
 import sys
 from datetime import datetime, timezone
+from functools import lru_cache
 
 # El chequeo de dependencias NO va aquí arriba: salir del proceso al importar
 # rompe a quien solo quiera usar `mosca()`, y revienta la recolección de tests.
@@ -72,6 +73,7 @@ def _clasificar(nombre: str, motivo_cae: str, motivo_pq: str):
                        f"salvado: compruébelo a mano.")
 
 
+@lru_cache(maxsize=1)
 def _openssl_capaz() -> str | None:
     """Un openssl que entienda los grupos híbridos. LibreSSL —el de macOS— no.
 
@@ -152,16 +154,13 @@ def analizar(host: str, puerto: int = 443, timeout: float = 10.0) -> dict:
     }
 
 
+# `_envolver` vive en tamizador.py: tenerlo duplicado aquí, con una
+# implementación ligeramente distinta, era una divergencia esperando a ocurrir.
+from tamizador import _envolver as _envolver_base
+
+
 def _envolver(t: str, n: int = 62) -> list[str]:
-    out, ln = [], ""
-    for w in t.split():
-        if len(ln) + len(w) + 1 > n and ln:
-            out.append(ln); ln = w
-        else:
-            ln = f"{ln} {w}".strip()
-    if ln:
-        out.append(ln)
-    return out
+    return _envolver_base(t, n)
 
 
 def informe(d: dict) -> None:

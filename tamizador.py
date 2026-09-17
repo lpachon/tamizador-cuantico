@@ -54,7 +54,7 @@ from typing import Callable
 import numpy as np
 
 try:
-    from scipy.optimize import minimize
+    from scipy.optimize import Bounds, minimize
     from scipy.stats import qmc, spearmanr
     HAY_SCIPY = True
 except ImportError:                                    # pragma: no cover
@@ -125,6 +125,23 @@ def _num(x: float, dec: int = 4) -> str:
     return t.replace(",", "\u0001").replace(".", ",").replace("\u0001", ".")
 
 
+def _ent(n: int) -> str:
+    """Entero con punto de millar."""
+    return _num(n, 15)
+
+
+def _fij(x: float, dec: int = 2) -> str:
+    """Decimales fijos, en castellano."""
+    s = f"{x:,.{dec}f}"
+    return s.replace(",", "\u0001").replace(".", ",").replace("\u0001", ".")
+
+
+def _pct(x: float, dec: int = 2) -> str:
+    """Porcentaje en castellano: coma decimal y espacio antes del signo."""
+    t = f"{x * 100:,.{dec}f}"
+    return t.replace(",", "\u0001").replace(".", ",").replace("\u0001", ".") + " %"
+
+
 # ── Muestreo ────────────────────────────────────────────────────────────
 def _muestrear(p: Problema) -> np.ndarray:
     lo = np.array([c[0] for c in p.cotas], dtype=float)
@@ -152,8 +169,8 @@ def _m1_cabe(p: Problema) -> Medida:
     prof = 2 * (3 * q + 8)
     return Medida(
         "¿Cabe en el hardware de compuertas de hoy?",
-        f"{q} qubits · profundidad ≈ {prof}",
-        f"≤ {QUBITS_MAX} qubits",
+        f"{_ent(q)} qubits · profundidad ≈ {_ent(prof)}",
+        f"≤ {_ent(QUBITS_MAX)} qubits",
         q <= QUBITS_MAX,
         f"{p.n_variables} variables × {p.bits_por_variable} bits. "
         f"Bajar un bit por variable ahorra {p.n_variables} qubits y pierde resolución. "
@@ -195,7 +212,7 @@ def _m2_estructura(p: Problema, Xf: np.ndarray, vf: np.ndarray) -> Medida:
     exige variables auxiliares.
     """
     PREGUNTA = "¿Sobrevive la traducción a QUBO?"
-    UMBRAL = f"ρ ≥ {RHO_MIN}"
+    UMBRAL = f"ρ ≥ {_fij(RHO_MIN, 2)}"
     if len(vf) < 30:
         return Medida(PREGUNTA, "no se pudo medir", UMBRAL, None,
                       "Hubo muy pocas soluciones factibles para ajustar el "
@@ -214,10 +231,10 @@ def _m2_estructura(p: Problema, Xf: np.ndarray, vf: np.ndarray) -> Medida:
     K = Q.shape[1]
     n_terminos = 1 + K + K * (K - 1) // 2          # sin q², que para un bit es q
     if n_terminos > len(Q) // 3:
-        return Medida(PREGUNTA, f"no se pudo medir ({K} bits → {n_terminos:,} términos)",
+        return Medida(PREGUNTA, f"no se pudo medir ({K} bits → {_ent(n_terminos)} términos)",
                       UMBRAL, None,
-                      f"Una cuadrática sobre {K} bits tiene {n_terminos:,} términos y "
-                      f"solo hay {len(Q):,} muestras: el ajuste sería memoria, no "
+                      f"Una cuadrática sobre {K} bits tiene {_ent(n_terminos)} términos y "
+                      f"solo hay {_ent(len(Q))} muestras: el ajuste sería memoria, no "
                       f"estructura. Reduzca bits por variable o el número de variables.")
 
     cols = [np.ones(len(Q)), *Q.T]
@@ -230,28 +247,54 @@ def _m2_estructura(p: Problema, Xf: np.ndarray, vf: np.ndarray) -> Medida:
     if HAY_SCIPY:
         rho = float(spearmanr(pred, y).statistic)
     else:
-        r = lambda z: np.argsort(np.argsort(z))
-        rho = float(np.corrcoef(r(pred), r(y))[0, 1])
+        rho = _spearman(pred, y)
     if not np.isfinite(rho):
         return Medida(PREGUNTA, "no se pudo medir", UMBRAL, None,
                       "El objetivo no varía entre las soluciones factibles.")
     return Medida(
         PREGUNTA,
-        f"ρ de Spearman = {rho:.3f}",
+        f"ρ de Spearman = {_fij(rho, 3)}",
         UMBRAL,
         rho >= RHO_MIN,
-        f"Ajustado sobre los {K} bits que vería el QUBO, con {n_terminos:,} "
+        f"Ajustado sobre los {K} bits que vería el QUBO, con {_ent(n_terminos)} "
         f"términos. Un ρ bajo significa «no cabe en un QUBO tal cual», no «no "
         f"tiene estructura».",
     )
+
+
+def _spearman(a: np.ndarray, b: np.ndarray) -> float:
+    """Spearman sin scipy, con empates promediados.
+
+    `argsort(argsort(z))` no promedia empates: a un vector constante le INVENTA
+    un orden y devuelve un número donde scipy devuelve NaN. Sobre bits hay
+    muchísimos empates, así que la diferencia no es teórica.
+    """
+    def rangos(z):
+        z = np.asarray(z, dtype=float)
+        orden = np.argsort(z, kind="mergesort")
+        zs = z[orden]
+        r = np.empty(len(z), dtype=float)
+        i = 0
+        while i < len(zs):
+            j = i
+            while j + 1 < len(zs) and zs[j + 1] == zs[i]:
+                j += 1
+            r[orden[i:j + 1]] = (i + j) / 2.0
+            i = j + 1
+        return r
+
+    ra, rb = rangos(a), rangos(b)
+    if ra.std() == 0 or rb.std() == 0:      # constante: no hay orden que comparar
+        return float("nan")
+    return float(np.corrcoef(ra, rb)[0, 1])
 
 
 def _m3_rareza(p: Problema, n_total: int, n_factible: int) -> Medida:
     r = n_factible / max(1, n_total)
     return Medida(
         "¿Las soluciones válidas son raras?",
-        f"{r:.4%}  ({n_factible:,} de {n_total:,})",
-        f"≥ {RENDIMIENTO_MIN:.1%}",
+        f"{_pct(r, 4)}  ({_ent(n_factible)} de {_ent(n_total)})",
+        f"≥ {_pct(RENDIMIENTO_MIN, 1)}",
         r >= RENDIMIENTO_MIN,
         "Si son una fracción ínfima del espacio, ninguna concentración de "
         "probabilidad alcanzable hoy las encuentra.",
@@ -282,19 +325,19 @@ def _m4_planitud(p: Problema, vf: np.ndarray) -> Medida:
         # El relativo solo tiene sentido si la mediana domina a la dispersión.
         if abs(p50) < disp:
             return Medida(
-                PREGUNTA, f"dispersión {disp:,.4g} en unidades del objetivo",
+                PREGUNTA, f"dispersión {_num(disp)} en unidades del objetivo",
                 "—", None,
                 "Su objetivo cruza el cero o ronda el cero, así que un ruido "
                 "RELATIVO no es interpretable aquí. Declare `ruido_absoluto` "
                 "en unidades del objetivo y vuelva a tamizar.")
         ruido = float(p.ruido_del_modelo * abs(p50))
-        origen = f"{p.ruido_del_modelo:.1%} de la mediana"
+        origen = f"{_pct(p.ruido_del_modelo, 1)} de la mediana"
 
     necesario = MARGEN_PLANITUD * ruido
     return Medida(
         PREGUNTA,
-        f"dispersión = {disp:,.4g}  (ruido {ruido:,.4g}, {origen})",
-        f"> {necesario:,.4g}  ({MARGEN_PLANITUD:.0f}× su ruido)",
+        f"dispersión = {_num(disp)}  (ruido {_num(ruido)}, {origen})",
+        f"> {_num(necesario)}  ({MARGEN_PLANITUD:.0f}× su ruido)",
         disp > necesario,
         "Si todas las soluciones válidas valen casi lo mismo, concentrar "
         "probabilidad sobre ellas no mejora el objetivo. Se compara en "
@@ -322,14 +365,26 @@ def _m5_clasico(p: Problema, Xf: np.ndarray, vf: np.ndarray, t_muestreo: float) 
             return v if np.isfinite(v) else 1e18
 
         u0 = (x0 - lo) / ancho
-        r = minimize(seguro, u0, method="COBYLA",
-                     options={"maxiter": 600, "rhobeg": 0.08})
-        if np.isfinite(r.fun) and r.fun < 1e17:
-            mejor = min(mejor, float(r.fun))
+        # COBYLA no respeta las cotas si no se le dan: se va fuera de la caja y
+        # devuelve un valor que el usuario NO puede alcanzar. En la plantilla del
+        # taller llegaba a proponer una producción negativa. Se le pasan las cotas
+        # y, además, se recorta y reevalúa el punto final: la cifra a batir tiene
+        # que ser alcanzable dentro de lo que el usuario declaró.
+        try:
+            r = minimize(seguro, u0, method="COBYLA",
+                         bounds=Bounds(np.zeros(len(u0)), np.ones(len(u0))),
+                         options={"maxiter": 600, "rhobeg": 0.08})
+        except TypeError:                      # scipy anterior a 1.11
+            r = minimize(seguro, u0, method="COBYLA",
+                         options={"maxiter": 600, "rhobeg": 0.08})
+        u = np.clip(np.asarray(r.x, dtype=float), 0.0, 1.0)
+        v = seguro(u)
+        if np.isfinite(v) and v < 1e17:
+            mejor = min(mejor, float(v))
     t = time.time() - t0 + t_muestreo
     return Medida(
         "Línea base clásica",
-        f"{mejor:,.4f} en {t:.2f} s",
+        f"{_fij(mejor, 4)} en {_fij(t, 2)} s",
         "la cifra a batir",
         None,                        # informativa: no aprueba ni suspende
         "Esta es la cifra que cualquier propuesta cuántica tiene que superar. "
@@ -404,7 +459,7 @@ def _resto_parametros(p: Problema, niveles: int, n_evaluadas: int) -> None:
     if p.ruido_absoluto is not None:
         print(f"  RUIDO DEL MODELO  {_num(p.ruido_absoluto)} en unidades del objetivo (declarado)")
     else:
-        print(f"  RUIDO DEL MODELO  {p.ruido_del_modelo:.2%} relativo a la mediana (derivado)")
+        print(f"  RUIDO DEL MODELO  {_pct(p.ruido_del_modelo)} relativo a la mediana (derivado)")
     fuente = "Sobol" if HAY_SCIPY else "aleatorio uniforme"
     print(f"  MUESTREO          {_num(n_evaluadas, 12)} puntos ({fuente}, semilla {p.semilla})")
     if n_evaluadas != p.n_muestras:

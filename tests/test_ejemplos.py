@@ -3,6 +3,8 @@
 Son los que se enseñan en el taller y los que cita el README: si cambian de
 veredicto sin querer, esto salta.
 """
+import re
+
 import pytest
 
 from tamizador import (ejemplo_ascenso_restringido, ejemplo_asignacion_grande,
@@ -36,7 +38,8 @@ def test_labs_encuentra_el_optimo_conocido():
     """Para N=16 el óptimo de LABS es E = 24 (factor de mérito 5,33). Si la
     línea base clásica deja de encontrarlo, algo se rompió en el muestreo."""
     v = tamizar(ejemplo_secuencia_labs(), imprimir=False)
-    mejor = float(v.medidas[4].valor.split(" en ")[0].replace(",", ""))
+    crudo = v.medidas[4].valor.split(" en ")[0]          # «24,0000» en castellano
+    mejor = float(crudo.replace(".", "").replace(",", "."))
     assert mejor == pytest.approx(24.0, abs=1e-6), mejor
 
 
@@ -76,6 +79,26 @@ def test_el_informe_imprime_los_parametros(capsys):
 
 
 def test_los_numeros_van_en_castellano(capsys):
-    """Punto de millar y coma decimal: «262,144» se lee mal en español."""
+    """Punto de millar y coma decimal, y lo mismo en TODA la salida.
+
+    La versión anterior fijaba «262.144 puntos», que es el conteo de Sobol: sin
+    scipy son 20.000 y el job del CI se ponía rojo. Peor aún, no cazaba el
+    defecto de verdad — el bloque de parámetros escribía 32.768 y la medida 3
+    escribía 32,768 para el MISMO número. Eso es lo que se comprueba ahora.
+    """
     tamizar(ejemplo_ascenso_restringido())
-    assert "262.144 puntos" in capsys.readouterr().out
+    salida = capsys.readouterr().out
+
+    m = re.search(r"MUESTREO\s+([\d.]+) puntos", salida)
+    assert m, "el eco de parámetros no imprime el muestreo"
+    conteo = m.group(1)
+    assert "," not in conteo, f"millares con coma inglesa: {conteo!r}"
+    if len(conteo.replace(".", "")) > 3:
+        assert "." in conteo, f"faltó el punto de millar: {conteo!r}"
+
+    # El mismo número, en la medida 3. Si los dos bloques divergen, se lee mal.
+    assert f"de {conteo})" in salida, (
+        f"la medida 3 no escribe {conteo!r} igual que el eco de parámetros")
+
+    # Y ningún porcentaje con punto decimal inglés.
+    assert not re.search(r"\d+\.\d+ ?%", salida), "porcentaje con punto decimal"
