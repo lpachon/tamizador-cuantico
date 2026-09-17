@@ -14,6 +14,14 @@ descubrirlo después de pagar un piloto. Esta herramienta hace esa medición.
 Material del taller *«Dos relojes distintos»*, Clúster Tecnología & Economía del
 Conocimiento, Cámara de Comercio de Bogotá.
 
+## Las diapositivas
+
+**[Dos_relojes_distintos.pptx](Dos_relojes_distintos.pptx)** — las 51 láminas del
+taller, para repasar o para estudiar por su cuenta lo que no dé tiempo a ver en la
+sala. Cubren qué cambia de verdad en un circuito cuántico, qué demostró Google
+exactamente, el reloj de la criptografía post-cuántica —que es el único con fecha—
+y cómo se lleva un problema de ingeniería real hasta la máquina.
+
 ---
 
 ## Instalación
